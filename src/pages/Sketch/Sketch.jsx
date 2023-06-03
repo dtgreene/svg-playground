@@ -15,7 +15,7 @@ import FileSaver from 'file-saver';
 
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
-import { dracula } from '@uiw/codemirror-theme-dracula';
+import { sublime } from '@uiw/codemirror-theme-sublime';
 
 import { setup } from '../../code/setup';
 import { createSVGScript, removeSVGScript } from '../../utils';
@@ -25,9 +25,38 @@ setup(window);
 
 export const Sketch = ({ name, defaultCode }) => {
   const codeValue = useRef(defaultCode);
+  const codeEditor = useRef();
   const svgContainer = useRef();
   const theme = useTheme();
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const handleSaveCommand = (event) => {
+      if (event.keyCode === 83 && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+
+        updateSVG();
+      }
+    };
+
+    if (codeEditor.current) {
+      codeEditor.current.editor.addEventListener(
+        'keydown',
+        handleSaveCommand,
+        false
+      );
+    }
+
+    return () => {
+      if (codeEditor.current) {
+        codeEditor.current.editor.removeEventListener(
+          'keydown',
+          handleSaveCommand,
+          false
+        );
+      }
+    };
+  }, []);
 
   const updateSVG = useCallback(() => {
     removeSVGScript(document.head);
@@ -57,19 +86,8 @@ export const Sketch = ({ name, defaultCode }) => {
   useEffect(() => {
     updateSVG();
 
-    const handleSaveCommand = (event) => {
-      if (event.keyCode === 83 && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-
-        updateSVG();
-      }
-    };
-
-    document.addEventListener('keydown', handleSaveCommand, false);
-
     return () => {
       removeSVGScript(document.head);
-      document.removeEventListener('keydown', handleSaveCommand, false);
     };
   }, [updateSVG]);
 
@@ -128,7 +146,8 @@ export const Sketch = ({ name, defaultCode }) => {
               value={defaultCode}
               onChange={handleCodeChange}
               extensions={[javascript()]}
-              theme={dracula}
+              theme={sublime}
+              ref={codeEditor}
             />
           </Box>
           {error && (

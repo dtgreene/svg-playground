@@ -11,26 +11,32 @@ import '@fontsource/poppins/400.css';
 import '@fontsource/poppins/500.css';
 import '@fontsource/poppins/700.css';
 
-const router = createBrowserRouter([
+const basename = import.meta.env.PROD ? 'svg-playground/dist' : undefined;
+const router = createBrowserRouter(
+  [
+    {
+      element: <Layout />,
+      errorElement: <ErrorBoundary />,
+      children: [
+        {
+          index: true,
+          element: <Root />,
+        },
+        ...sketches.map(({ name, path, defaultCode }) => ({
+          path,
+          element: <Sketch name={name} defaultCode={defaultCode} />,
+        })),
+        {
+          path: '*',
+          element: <NotFound />,
+        },
+      ],
+    },
+  ],
   {
-    element: <Layout />,
-    errorElement: <ErrorBoundary />,
-    children: [
-      {
-        index: true,
-        element: <Root />,
-      },
-      ...sketches.map(({ name, path, defaultCode }) => ({
-        path,
-        element: <Sketch name={name} defaultCode={defaultCode} />,
-      })),
-      {
-        path: '*',
-        element: <NotFound />,
-      },
-    ],
-  },
-]);
+    basename,
+  }
+);
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
