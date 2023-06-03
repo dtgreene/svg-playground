@@ -2,8 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 
-import { Root, NotFound, Spiral, Squares } from './pages';
+import { Root, NotFound, Sketch } from './pages';
 import { Layout, ErrorBoundary } from './components';
+import sketches from './sketches';
 
 import '@fontsource/poppins/300.css';
 import '@fontsource/poppins/400.css';
@@ -19,14 +20,10 @@ const router = createBrowserRouter([
         index: true,
         element: <Root />,
       },
-      {
-        path: 'sketches/spiral',
-        element: <Spiral />,
-      },
-      {
-        path: 'sketches/squares',
-        element: <Squares />,
-      },
+      ...sketches.map(({ name, path, defaultCode }) => ({
+        path,
+        element: <Sketch name={name} defaultCode={defaultCode} />,
+      })),
       {
         path: '*',
         element: <NotFound />,

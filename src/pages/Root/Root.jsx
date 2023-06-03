@@ -1,22 +1,11 @@
 import React from 'react';
-import { Box, Grid, Typography } from '@mui/material';
+import { Box, Grid, Tooltip, Typography } from '@mui/material';
 import { styled } from '@mui/system';
 import { useNavigate } from 'react-router-dom';
+import ImageIcon from '@mui/icons-material/Image';
 
-import SpiralThumbnail from '../../icons/Spiral.svg';
-
-const sketches = [
-  {
-    name: 'Spiral',
-    path: '/sketches/spiral',
-    thumbnail: SpiralThumbnail,
-  },
-  {
-    name: 'Squares',
-    path: '/sketches/squares',
-    thumbnail: SpiralThumbnail,
-  },
-];
+import sketches from '../../sketches';
+import { ThumbnailPreview } from '../../components';
 
 const SketchCell = styled(Box)(({ theme }) => ({
   cursor: 'pointer',
@@ -43,12 +32,19 @@ const SketchName = styled(Box)(({ theme }) => ({
   padding: theme.spacing(1),
 }));
 
-const Thumbnail = styled('img')({
-  width: '100%',
-  height: '100%',
+const Thumbnail = styled(Box)({
   minWidth: 100,
   maxWidth: 200,
 });
+
+const PopperProps = {
+  keepMounted: false,
+  sx: {
+    '& .MuiTooltip-tooltip': {
+      maxWidth: 'none',
+    },
+  },
+};
 
 export const Root = () => {
   const navigate = useNavigate();
@@ -57,14 +53,21 @@ export const Root = () => {
     <>
       <Box mb={4}>
         <Typography variant="h3" textAlign="center">
-          SVG Playground
+          Sketches
         </Typography>
       </Box>
       <Grid container spacing={4}>
         {sketches.map((sketch) => (
           <Grid key={sketch.path} item>
             <SketchCell onClick={() => navigate(sketch.path)} xs={4}>
-              <Thumbnail src={sketch.thumbnail} />
+              <Tooltip
+                title={<ThumbnailPreview code={sketch.defaultCode} />}
+                PopperProps={PopperProps}
+              >
+                <Thumbnail>
+                  <ImageIcon sx={{ width: '100%', height: '100%' }} />
+                </Thumbnail>
+              </Tooltip>
               <SketchName>{sketch.name}</SketchName>
             </SketchCell>
           </Grid>

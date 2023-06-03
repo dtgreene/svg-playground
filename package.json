@@ -6,11 +6,18 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:gh": "vite build --base https://dtgreene.github.io/svg-playground/dist/",
+    "preview": "vite preview",
+    "format": "npx prettier --write src"
   },
   "dependencies": {
+    "@codemirror/lang-javascript": "^6.1.9",
     "@fontsource/poppins": "^5.0.1",
+    "@uiw/codemirror-theme-dracula": "^4.20.3",
+    "@uiw/codemirror-themes": "^4.20.3",
+    "@uiw/react-codemirror": "^4.20.3",
     "copy-to-clipboard": "^3.3.3",
+    "file-saver": "^2.0.5",
     "immer": "^10.0.2",
     "quick-perlin-noise-js": "^1.0.3",
     "react": "^18.2.0",
