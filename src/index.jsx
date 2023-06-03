@@ -11,7 +11,12 @@ import '@fontsource/poppins/400.css';
 import '@fontsource/poppins/500.css';
 import '@fontsource/poppins/700.css';
 
-const basename = import.meta.env.PROD ? 'svg-playground/dist' : undefined;
+const sketchRoutes = sketches.map(({ name, path, defaultCode }) => ({
+  path,
+  element: <Sketch name={name} defaultCode={defaultCode} />,
+}));
+
+const basename = import.meta.env.PROD ? '/svg-playground/dist' : undefined;
 const router = createBrowserRouter(
   [
     {
@@ -22,10 +27,7 @@ const router = createBrowserRouter(
           index: true,
           element: <Root />,
         },
-        ...sketches.map(({ name, path, defaultCode }) => ({
-          path,
-          element: <Sketch name={name} defaultCode={defaultCode} />,
-        })),
+        ...sketchRoutes,
         {
           path: '*',
           element: <NotFound />,
