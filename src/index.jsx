@@ -16,7 +16,6 @@ const sketchRoutes = sketches.map(({ path, ...other }) => ({
   element: <Sketch {...other} />,
 }));
 
-const basename = import.meta.env.PROD ? 'svg-playground/dist' : undefined;
 const router = createHashRouter(
   [
     {
@@ -36,7 +35,7 @@ const router = createHashRouter(
     },
   ],
   {
-    basename,
+    basename: import.meta.env.VITE_BASE_NAME,
   }
 );
 
