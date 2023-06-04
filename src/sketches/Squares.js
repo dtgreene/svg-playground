@@ -1,4 +1,7 @@
 function main() {
+  const { TWO_PI } = window.constants;
+  const { createSVG, createPath, randomBetween } = window.utils;
+
   const cellSize = 8;
   const cellDiagonal = Math.hypot(cellSize, cellSize);
 

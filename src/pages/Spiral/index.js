@@ -1,1 +1,0 @@
-export { Spiral } from './Spiral';

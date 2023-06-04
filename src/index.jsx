@@ -4,16 +4,16 @@ import { RouterProvider, createHashRouter } from 'react-router-dom';
 
 import { Root, NotFound, Sketch } from './pages';
 import { Layout, ErrorBoundary } from './components';
-import sketches from './sketches';
+import { sketches } from './sketches';
 
 import '@fontsource/poppins/300.css';
 import '@fontsource/poppins/400.css';
 import '@fontsource/poppins/500.css';
 import '@fontsource/poppins/700.css';
 
-const sketchRoutes = sketches.map(({ name, path, defaultCode }) => ({
+const sketchRoutes = sketches.map(({ path, ...other }) => ({
   path,
-  element: <Sketch name={name} defaultCode={defaultCode} />,
+  element: <Sketch {...other} />,
 }));
 
 const basename = import.meta.env.PROD ? '/svg-playground/dist' : undefined;

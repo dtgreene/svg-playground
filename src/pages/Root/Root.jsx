@@ -4,13 +4,13 @@ import { styled } from '@mui/system';
 import { useNavigate } from 'react-router-dom';
 import ImageIcon from '@mui/icons-material/Image';
 
-import sketches from '../../sketches';
+import { sketches } from '../../sketches';
 import { ThumbnailPreview } from '../../components';
 
 const SketchCell = styled(Box)(({ theme }) => ({
   cursor: 'pointer',
   borderRadius: theme.shape.borderRadius,
-  background: '#222',
+  background: theme.palette.background.paper,
   position: 'relative',
   transition: theme.transitions.create('opacity', {
     duration: theme.transitions.duration.short,

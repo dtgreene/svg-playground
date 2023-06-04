@@ -1,4 +1,7 @@
 function main() {
+  const { TWO_PI } = window.constants;
+  const { createSVG, createPath } = window.utils;
+
   const count = 15;
   const resolution = 50;
   const spacing = 4;

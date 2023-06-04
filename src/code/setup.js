@@ -38,14 +38,32 @@ function randomBetween(min, max) {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
+function remap(n, start1, stop1, start2, stop2) {
+  return ((n - start1) / (stop1 - start1)) * (stop2 - start2) + start2;
+}
+
+function distanceTo(x1, y1, x2, y2) {
+  return Math.hypot(x1 - x2, y1 - y2);
+}
+
+function roundTo(x, y, precision = 4) {
+  const p = 10 ** precision;
+  return [Math.round(x * p) / p, Math.round(y * p) / p];
+}
+
 export function setup(context) {
-  context.noise = quickNoise.noise;
-
-  context.TWO_PI = Math.PI * 2;
-  context.HALF_PI = Math.PI * 0.5;
-  context.QUARTER_PI = Math.PI * 0.25;
-
-  context.createSVG = createSVG;
-  context.createPath = createPath;
-  context.randomBetween = randomBetween;
+  context.constants = {
+    TWO_PI: Math.PI * 2,
+    HALF_PI: Math.PI * 0.5,
+    QUARTER_PI: Math.PI * 0.25,
+  };
+  context.utils = {
+    noise: quickNoise.noise,
+    createSVG,
+    createPath,
+    randomBetween,
+    remap,
+    distanceTo,
+    roundTo,
+  };
 }

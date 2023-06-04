@@ -1,4 +1,7 @@
 function main() {
+  const { TWO_PI } = window.constants;
+  const { createSVG, createPath } = window.utils;
+
   const cellSize = 8;
   const viewBoxSize = 128;
 
