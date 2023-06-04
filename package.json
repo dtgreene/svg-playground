@@ -13,6 +13,7 @@
     "@codemirror/lang-javascript": "^6.1.9",
     "@fontsource/poppins": "^5.0.1",
     "@uiw/codemirror-theme-sublime": "^4.20.3",
+    "@uiw/codemirror-theme-tokyo-night-storm": "^4.20.3",
     "@uiw/codemirror-themes": "^4.20.3",
     "@uiw/react-codemirror": "^4.20.3",
     "copy-to-clipboard": "^3.3.3",

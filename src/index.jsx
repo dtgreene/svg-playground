@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { RouterProvider, createHashRouter } from 'react-router-dom';
 
 import { Root, NotFound, Sketch } from './pages';
 import { Layout, ErrorBoundary } from './components';
@@ -17,7 +17,7 @@ const sketchRoutes = sketches.map(({ name, path, defaultCode }) => ({
 }));
 
 const basename = import.meta.env.PROD ? '/svg-playground/dist' : undefined;
-const router = createBrowserRouter(
+const router = createHashRouter(
   [
     {
       element: <Layout />,

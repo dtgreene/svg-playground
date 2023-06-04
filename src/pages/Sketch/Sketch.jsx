@@ -15,7 +15,7 @@ import FileSaver from 'file-saver';
 
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
-import { sublime } from '@uiw/codemirror-theme-sublime';
+import { tokyoNightStorm } from '@uiw/codemirror-theme-tokyo-night-storm';
 
 import { setup } from '../../code/setup';
 import { createSVGScript, removeSVGScript } from '../../utils';
@@ -146,7 +146,7 @@ export const Sketch = ({ name, defaultCode }) => {
               value={defaultCode}
               onChange={handleCodeChange}
               extensions={[javascript()]}
-              theme={sublime}
+              theme={tokyoNightStorm}
               ref={codeEditor}
             />
           </Box>
