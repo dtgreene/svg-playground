@@ -2,19 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider, createHashRouter } from 'react-router-dom';
 
-import { Root, NotFound, Sketch } from './pages';
+import { Root, NotFound } from './pages';
 import { Layout, ErrorBoundary } from './components';
-import { sketches } from './sketches';
 
 import '@fontsource/poppins/300.css';
 import '@fontsource/poppins/400.css';
 import '@fontsource/poppins/500.css';
 import '@fontsource/poppins/700.css';
-
-const sketchRoutes = sketches.map(({ path, ...other }) => ({
-  path,
-  element: <Sketch {...other} />,
-}));
 
 const router = createHashRouter(
   [
@@ -26,7 +20,10 @@ const router = createHashRouter(
           index: true,
           element: <Root />,
         },
-        ...sketchRoutes,
+        {
+          path: '/sketches/:index',
+          lazy: () => import('./pages/Sketch'),
+        },
         {
           path: '*',
           element: <NotFound />,

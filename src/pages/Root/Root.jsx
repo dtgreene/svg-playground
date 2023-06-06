@@ -24,12 +24,13 @@ const SketchCell = styled(Box)(({ theme }) => ({
 }));
 
 const SketchName = styled(Box)(({ theme }) => ({
-  background: '#000',
   position: 'absolute',
-  bottom: 0,
+  top: 0,
   left: 0,
   width: '100%',
   padding: theme.spacing(1),
+  fontSize: 24,
+  borderRadius: theme.shape.borderRadius
 }));
 
 const Thumbnail = styled(Box)({
@@ -57,9 +58,9 @@ export const Root = () => {
         </Typography>
       </Box>
       <Grid container spacing={4}>
-        {sketches.map((sketch) => (
-          <Grid key={sketch.path} item>
-            <SketchCell onClick={() => navigate(sketch.path)} xs={4}>
+        {sketches.map((sketch, index) => (
+          <Grid key={sketch.id} item>
+            <SketchCell onClick={() => navigate(`/sketches/${index}`)} xs={4}>
               <Tooltip
                 title={<ThumbnailPreview code={sketch.defaultCode} />}
                 PopperProps={PopperProps}
@@ -68,7 +69,7 @@ export const Root = () => {
                   <ImageIcon sx={{ width: '100%', height: '100%' }} />
                 </Thumbnail>
               </Tooltip>
-              <SketchName>{sketch.name}</SketchName>
+              <SketchName>{index}</SketchName>
             </SketchCell>
           </Grid>
         ))}

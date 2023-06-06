@@ -1,4 +1,4 @@
-import quickNoise from 'quick-perlin-noise-js';
+import { createNoise2D } from 'simplex-noise';
 
 function createSVG(children, props = {}) {
   const defaultProps = {
@@ -46,9 +46,9 @@ function distanceTo(x1, y1, x2, y2) {
   return Math.hypot(x1 - x2, y1 - y2);
 }
 
-function roundTo(x, y, precision = 4) {
+function roundTo(value, precision = 4) {
   const p = 10 ** precision;
-  return [Math.round(x * p) / p, Math.round(y * p) / p];
+  return Math.round(value * p) / p;
 }
 
 export function setup(context) {
@@ -58,7 +58,7 @@ export function setup(context) {
     QUARTER_PI: Math.PI * 0.25,
   };
   context.utils = {
-    noise: quickNoise.noise,
+    createNoise2D,
     createSVG,
     createPath,
     randomBetween,

@@ -21,11 +21,12 @@
     "file-saver": "^2.0.5",
     "immer": "^10.0.2",
     "nanoid": "^4.0.2",
-    "quick-perlin-noise-js": "^1.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-hook-form": "^7.44.2",
-    "react-router-dom": "^6.11.2"
+    "react-router-dom": "^6.11.2",
+    "simplex-noise": "^4.0.1",
+    "xml-formatter": "^3.4.1"
   },
   "devDependencies": {
     "@emotion/react": "^11.11.0",

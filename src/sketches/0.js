@@ -1,6 +1,6 @@
 function main() {
   const { TWO_PI } = window.constants;
-  const { createSVG, createPath } = window.utils;
+  const { createSVG, createPath, roundTo } = window.utils;
 
   const cellSize = 8;
   const viewBoxSize = 128;
@@ -15,13 +15,14 @@ function main() {
     return (!isColEven && isRowEven) || (isColEven && !isRowEven);
   }
 
+  const maxRadius = Math.hypot(viewBoxSize * 0.5, viewBoxSize * 0.5);
   const radiusIncrement = 1;
   const angleIncrement = 0.005;
   const paths = [];
 
   let radius = 4;
 
-  while (radius < viewBoxSize) {
+  while (radius < maxRadius) {
     let angle = 0;
     let isLineDown = false;
     let pathData = '';
@@ -37,9 +38,9 @@ function main() {
         if (!isLineDown) {
           isLineDown = true;
 
-          pathData += `M${x},${y} `;
+          pathData += `M${roundTo(x, 4)},${roundTo(y, 4)} `;
         } else {
-          pathData += `L${x},${y} `;
+          pathData += `L${roundTo(x, 4)},${roundTo(y, 4)} `;
         }
       } else {
         // if a line is down, break the line and stroke

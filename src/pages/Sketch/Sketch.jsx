@@ -2,6 +2,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -15,7 +16,7 @@ import {
   useTheme,
   Snackbar,
 } from '@mui/material';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import copy from 'copy-to-clipboard';
 import FileSaver from 'file-saver';
@@ -23,21 +24,24 @@ import dayjs from 'dayjs';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { tokyoNightStorm } from '@uiw/codemirror-theme-tokyo-night-storm';
+import formatXml from 'xml-formatter';
 
 import { setup } from '../../code/setup';
 import { createSVGScript, removeSVGScript } from '../../utils';
 import { SketchSaveContext, ModalContext } from '../../contexts';
 import { ConfirmModal } from '../../components';
+import { sketches } from '../../sketches';
 
 // add global values to the window
 setup(window);
 
-export const Sketch = ({ name, id, defaultCode }) => {
+export const Component = () => {
+  const { index } = useParams();
   const codeEditor = useRef();
   const hasListeners = useRef(false);
   const svgContainer = useRef();
-  const codeValue = useRef(defaultCode);
-  const [initialCode, setInitialCode] = useState(defaultCode);
+  const codeValue = useRef('');
+  const [initialCode, setInitialCode] = useState('');
   const [savedSketch, setSavedSketch] = useState(null);
   const [savedTime, setSavedTime] = useState(null);
   const { deleteSavedSketch, getSavedSketch, saveSketch } =
@@ -48,15 +52,27 @@ export const Sketch = ({ name, id, defaultCode }) => {
   const [snackMessage, setSnackMessage] = useState('');
   const [showSnack, setShowSnack] = useState(false);
 
-  const updateSVG = useCallback(() => {
+  const { id, defaultCode } = useMemo(() => sketches[index] ?? {}, [index]);
+
+  const cleanUp = useCallback(() => {
     removeSVGScript(document.head);
 
-    const functionName = createSVGScript(codeValue.current, document.head);
+    if (svgContainer.current) {
+      svgContainer.current.innerHTML = '';
+    }
+  }, []);
 
-    // clear any error
-    setError(null);
+  const updateSVG = useCallback(() => {
+    cleanUp();
+
+    if (!codeValue.current || !svgContainer.current) return;
 
     try {
+      const functionName = createSVGScript(codeValue.current, document.head);
+
+      // clear any error
+      setError(null);
+
       // run the script
       const svg = window[functionName]();
       svgContainer.current.innerHTML = '';
@@ -71,7 +87,7 @@ export const Sketch = ({ name, id, defaultCode }) => {
     } catch (error) {
       setError(error.message);
     }
-  }, [theme]);
+  }, [theme, cleanUp]);
 
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -83,7 +99,7 @@ export const Sketch = ({ name, id, defaultCode }) => {
         setSavedSketch(savedValue);
         setSavedTime(dayjs(savedValue.timestamp).format('MM/DD/YYYY hh:mm:ss'));
 
-        setSnackMessage('Sketch saved');
+        setSnackMessage('Sketch saved!');
         setShowSnack(true);
 
         updateSVG();
@@ -110,11 +126,11 @@ export const Sketch = ({ name, id, defaultCode }) => {
 
       // update the code value
       codeValue.current = savedValue.value;
-      updateSVG();
+    } else {
+      codeValue.current = defaultCode;
     }
 
     setInitialCode(codeValue.current);
-
     // perform the initial update
     updateSVG();
 
@@ -128,10 +144,9 @@ export const Sketch = ({ name, id, defaultCode }) => {
           false
         );
       }
-      // remove the script
-      removeSVGScript(document.head);
+      cleanUp();
     };
-  }, [getSavedSketch, saveSketch, updateSVG, id, defaultCode]);
+  }, [getSavedSketch, saveSketch, updateSVG, cleanUp, id, defaultCode]);
 
   const handleSnackClose = () => {
     setSnackMessage('');
@@ -139,7 +154,19 @@ export const Sketch = ({ name, id, defaultCode }) => {
   };
 
   const handleCopyClick = () => {
-    copy(svgContainer.current.innerHTML);
+    if (svgContainer.current) {
+      try {
+        copy(
+          formatXml(svgContainer.current.innerHTML, { lineSeparator: '\n' })
+        );
+      } catch (error) {
+        console.error(`Could not format SVG: ${error}`);
+        copy(svgContainer.current.innerHTML);
+      }
+
+      setSnackMessage('Sketch copied!');
+      setShowSnack(true);
+    }
   };
 
   const handleCodeChange = (value) => {
@@ -148,12 +175,14 @@ export const Sketch = ({ name, id, defaultCode }) => {
   };
 
   const handleDownloadClick = () => {
-    const blob = new Blob([svgContainer.current.innerHTML], {
-      type: 'data:image/svg+xml;charset=utf-8',
-    });
-    const url = URL.createObjectURL(blob);
+    if (svgContainer.current) {
+      const blob = new Blob([svgContainer.current.innerHTML], {
+        type: 'data:image/svg+xml;charset=utf-8',
+      });
+      const url = URL.createObjectURL(blob);
 
-    FileSaver.saveAs(url, `${name}.svg`);
+      FileSaver.saveAs(url, `output_${Date.now()}.svg`);
+    }
   };
 
   const handleDeleteClick = async () => {
@@ -191,71 +220,74 @@ export const Sketch = ({ name, id, defaultCode }) => {
         <span>Back</span>
       </Link>
       <Typography variant="h3" mb={4} textAlign="center">
-        {name}
+        Sketch #{index}
       </Typography>
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
-          <Box
-            ref={svgContainer}
-            maxWidth={800}
-            borderRadius={4}
-            mb={2}
-            sx={{
-              transition: 'box-shadow 0.2s ease-in-out',
-              '& svg': {
-                width: '100%',
-                height: '100%',
-              },
-            }}
-          />
-          <Box display="flex" gap={2}>
-            <Button variant="outlined" onClick={handleCopyClick}>
-              Copy SVG
-            </Button>
-            <Button
-              variant="outlined"
-              type="button"
-              onClick={handleDownloadClick}
-            >
-              Download SVG
-            </Button>
-          </Box>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Box sx={{ mb: 2 }}>
-            <CodeMirror
-              value={initialCode}
-              onChange={handleCodeChange}
-              extensions={[javascript()]}
-              theme={tokyoNightStorm}
-              ref={codeEditor}
+      {!id && <Box>Sketch not found</Box>}
+      {id && (
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <Box
+              ref={svgContainer}
+              maxWidth={1200}
+              borderRadius={4}
+              mb={2}
+              sx={{
+                transition: 'box-shadow 0.2s ease-in-out',
+                '& svg': {
+                  width: '100%',
+                  height: '100%',
+                },
+              }}
             />
-          </Box>
-          {error && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              Script generated the following error: <b>{error}</b>
-            </Alert>
-          )}
-          {savedSketch && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              Last saved at {savedTime}
-            </Alert>
-          )}
-          <Box display="flex" justifyContent="space-between">
-            <Button variant="contained" onClick={updateSVG}>
-              Apply
-            </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              onClick={handleDeleteClick}
-              disabled={!savedSketch}
-            >
-              Delete Changes
-            </Button>
-          </Box>
+            <Box display="flex" gap={2}>
+              <Button variant="outlined" onClick={handleCopyClick}>
+                Copy SVG
+              </Button>
+              <Button
+                variant="outlined"
+                type="button"
+                onClick={handleDownloadClick}
+              >
+                Download SVG
+              </Button>
+            </Box>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Box sx={{ mb: 2 }}>
+              <CodeMirror
+                value={initialCode}
+                onChange={handleCodeChange}
+                extensions={[javascript()]}
+                theme={tokyoNightStorm}
+                ref={codeEditor}
+              />
+            </Box>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Script generated the following error: <b>{error}</b>
+              </Alert>
+            )}
+            {savedSketch && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Last saved at {savedTime}
+              </Alert>
+            )}
+            <Box display="flex" justifyContent="space-between">
+              <Button variant="contained" onClick={updateSVG}>
+                Apply
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={handleDeleteClick}
+                disabled={!savedSketch}
+              >
+                Delete Changes
+              </Button>
+            </Box>
+          </Grid>
         </Grid>
-      </Grid>
+      )}
       <Snackbar
         open={showSnack}
         autoHideDuration={3000}
