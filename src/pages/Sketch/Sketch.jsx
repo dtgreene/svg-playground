@@ -17,7 +17,7 @@ import {
   Snackbar,
 } from '@mui/material';
 import { Link as RouterLink, useParams } from 'react-router-dom';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import styled from '@emotion/styled';
 import copy from 'copy-to-clipboard';
 import FileSaver from 'file-saver';
 import dayjs from 'dayjs';
@@ -25,6 +25,13 @@ import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { tokyoNightStorm } from '@uiw/codemirror-theme-tokyo-night-storm';
 import formatXml from 'xml-formatter';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SaveIcon from '@mui/icons-material/Save';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DownloadIcon from '@mui/icons-material/Download';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CircleIcon from '@mui/icons-material/Circle';
 
 import { setup } from '../../code/setup';
 import { createSVGScript, removeSVGScript } from '../../utils';
@@ -34,6 +41,10 @@ import { sketches } from '../../sketches';
 
 // add global values to the window
 setup(window);
+
+const FancyIconButton = styled(Button)(({ theme }) => ({
+  gap: theme.spacing(1),
+}));
 
 export const Component = () => {
   const { index } = useParams();
@@ -89,20 +100,23 @@ export const Component = () => {
     }
   }, [theme, cleanUp]);
 
+  const saveSVG = useCallback(() => {
+    // save the sketch
+    const savedValue = saveSketch(id, codeValue.current);
+    setSavedSketch(savedValue);
+    setSavedTime(dayjs(savedValue.timestamp).format('MM/DD/YYYY hh:mm:ss'));
+
+    setSnackMessage('Sketch saved!');
+    setShowSnack(true);
+
+    updateSVG();
+  }, [saveSketch, updateSVG, id]);
+
   useEffect(() => {
     const handleKeyDown = (event) => {
       if (event.keyCode === 83 && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
-
-        // save the sketch
-        const savedValue = saveSketch(id, codeValue.current);
-        setSavedSketch(savedValue);
-        setSavedTime(dayjs(savedValue.timestamp).format('MM/DD/YYYY hh:mm:ss'));
-
-        setSnackMessage('Sketch saved!');
-        setShowSnack(true);
-
-        updateSVG();
+        saveSVG();
       }
     };
 
@@ -146,7 +160,15 @@ export const Component = () => {
       }
       cleanUp();
     };
-  }, [getSavedSketch, saveSketch, updateSVG, cleanUp, id, defaultCode]);
+  }, [
+    getSavedSketch,
+    saveSketch,
+    updateSVG,
+    saveSVG,
+    cleanUp,
+    id,
+    defaultCode,
+  ]);
 
   const handleSnackClose = () => {
     setSnackMessage('');
@@ -164,7 +186,7 @@ export const Component = () => {
         copy(svgContainer.current.innerHTML);
       }
 
-      setSnackMessage('Sketch copied!');
+      setSnackMessage('Sketch output copied to clipboard!');
       setShowSnack(true);
     }
   };
@@ -181,14 +203,17 @@ export const Component = () => {
       });
       const url = URL.createObjectURL(blob);
 
-      FileSaver.saveAs(url, `output_${Date.now()}.svg`);
+      FileSaver.saveAs(url, `sketch${index}_${Date.now()}.svg`);
+
+      setSnackMessage('Sketch output downloaded!');
+      setShowSnack(true);
     }
   };
 
   const handleDeleteClick = async () => {
     const confirmed = await open(ConfirmModal, {
       description:
-        'Your changes to this sketch will be deleted and replaced by the default value.  Are you sure?',
+        'Your local changes to this sketch will be deleted and replaced by the default value.  Are you sure?',
     });
 
     if (confirmed) {
@@ -236,23 +261,60 @@ export const Component = () => {
                 '& svg': {
                   width: '100%',
                   height: '100%',
+                  border: '1px solid #222',
                 },
               }}
             />
             <Box display="flex" gap={2}>
-              <Button variant="outlined" onClick={handleCopyClick}>
-                Copy SVG
-              </Button>
-              <Button
+              <FancyIconButton
                 variant="outlined"
-                type="button"
+                color="secondary"
+                onClick={handleCopyClick}
+              >
+                <ContentCopyIcon />
+                <span>Copy SVG</span>
+              </FancyIconButton>
+              <FancyIconButton
+                variant="outlined"
+                color="secondary"
                 onClick={handleDownloadClick}
               >
-                Download SVG
-              </Button>
+                <DownloadIcon />
+                <span>Download SVG</span>
+              </FancyIconButton>
             </Box>
           </Grid>
           <Grid item xs={12} md={6}>
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={2}
+            >
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={1}
+                color="primary.main"
+              >
+                {savedSketch && (
+                  <>
+                    <CircleIcon />
+                    <span>USING LOCAL COPY</span>
+                  </>
+                )}
+              </Box>
+              <Box display="flex" justifyContent="flex-end" gap={2}>
+                <FancyIconButton variant="outlined" onClick={saveSVG}>
+                  <SaveIcon />
+                  <span>Save</span>
+                </FancyIconButton>
+                <FancyIconButton variant="contained" onClick={updateSVG}>
+                  <RefreshIcon />
+                  <span>Apply</span>
+                </FancyIconButton>
+              </Box>
+            </Box>
             <Box sx={{ mb: 2 }}>
               <CodeMirror
                 value={initialCode}
@@ -272,18 +334,16 @@ export const Component = () => {
                 Last saved at {savedTime}
               </Alert>
             )}
-            <Box display="flex" justifyContent="space-between">
-              <Button variant="contained" onClick={updateSVG}>
-                Apply
-              </Button>
-              <Button
+            <Box display="flex" justifyContent="flex-end">
+              <FancyIconButton
                 variant="outlined"
                 color="error"
                 onClick={handleDeleteClick}
                 disabled={!savedSketch}
               >
-                Delete Changes
-              </Button>
+                <DeleteIcon />
+                <span>Delete Local Copy</span>
+              </FancyIconButton>
             </Box>
           </Grid>
         </Grid>
