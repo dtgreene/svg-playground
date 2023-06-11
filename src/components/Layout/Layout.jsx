@@ -5,11 +5,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { teal } from '@mui/material/colors';
 import CssBaseline from '@mui/material/CssBaseline';
 
-import {
-  SketchSaveProvider,
-  ModalProvider,
-  ModalPlaceholder,
-} from '../../contexts';
+import { ModalProvider, ModalPlaceholder, SnackProvider } from '../../contexts';
 
 const theme = createTheme({
   palette: {
@@ -28,14 +24,14 @@ const theme = createTheme({
 
 export const Layout = () => (
   <ThemeProvider theme={theme}>
-    <ModalProvider>
-      <SketchSaveProvider>
+    <SnackProvider>
+      <ModalProvider>
         <Box p={4}>
           <Outlet />
         </Box>
-      </SketchSaveProvider>
-      <ModalPlaceholder />
-    </ModalProvider>
+        <ModalPlaceholder />
+      </ModalProvider>
+    </SnackProvider>
     <CssBaseline />
   </ThemeProvider>
 );

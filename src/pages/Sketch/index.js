@@ -1,1 +1,1 @@
-export { Component } from './Sketch';
+export { Sketch } from './Sketch';

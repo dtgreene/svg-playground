@@ -14,13 +14,15 @@ import {
   Box,
   Alert,
   useTheme,
-  Snackbar,
+  Menu,
+  MenuItem,
+  Divider,
+  IconButton,
 } from '@mui/material';
 import { Link as RouterLink, useParams } from 'react-router-dom';
 import styled from '@emotion/styled';
 import copy from 'copy-to-clipboard';
 import FileSaver from 'file-saver';
-import dayjs from 'dayjs';
 import CodeMirror from '@uiw/react-codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { tokyoNightStorm } from '@uiw/codemirror-theme-tokyo-night-storm';
@@ -32,53 +34,102 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CircleIcon from '@mui/icons-material/Circle';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import SettingsIcon from '@mui/icons-material/Settings';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 
 import { setup } from '../../code/setup';
 import { createSVGScript, removeSVGScript } from '../../utils';
-import { SketchSaveContext, ModalContext } from '../../contexts';
+import { ModalContext, SnackContext } from '../../contexts';
 import { ConfirmModal } from '../../components';
 import { sketches } from '../../sketches';
+import { useSketchStorage } from '../../hooks';
 
 // add global values to the window
 setup(window);
 
-const FancyIconButton = styled(Button)(({ theme }) => ({
+const extensions = [javascript()];
+
+const GappedButton = styled(Button)(({ theme }) => ({
   gap: theme.spacing(1),
 }));
 
-export const Component = () => {
+const SketchControls = styled(Box)(({ theme }) => ({
+  position: 'absolute',
+  right: 0,
+  top: 0,
+  margin: theme.spacing(1),
+  opacity: 0,
+  background: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
+  transition: theme.transitions.create('opacity', {
+    duration: theme.transitions.duration.short,
+  }),
+}));
+
+const SketchBox = styled(Box)(({ theme }) => ({
+  maxWidth: 1200,
+  transition: theme.transitions.create('box-shadow', {
+    duration: theme.transitions.duration.short,
+  }),
+  '& svg': {
+    width: '100%',
+    height: '100%',
+    border: '1px solid #222',
+  },
+}));
+
+const SketchContainer = styled(Box)(({ theme }) => ({
+  position: 'relative',
+  marginBottom: theme.spacing(2),
+  '&:hover [data-id="sketch-controls"]': {
+    opacity: 1,
+  },
+}));
+
+const SettingsButton = styled(Button)(({ theme }) => ({
+  position: 'absolute',
+  top: 0,
+  right: 0,
+  margin: theme.spacing(1),
+  padding: theme.spacing(0.5),
+  minWidth: 0,
+}));
+
+export const Sketch = () => {
   const { index } = useParams();
+  const { id, defaultCode } = useMemo(() => sketches[index] ?? {}, [index]);
+
   const codeEditor = useRef();
   const hasListeners = useRef(false);
-  const svgContainer = useRef();
+  const editorInterval = useRef(false);
+  const pendingChanges = useRef(false);
+  const sketchElement = useRef();
   const codeValue = useRef('');
-  const [initialCode, setInitialCode] = useState('');
-  const [savedSketch, setSavedSketch] = useState(null);
-  const [savedTime, setSavedTime] = useState(null);
-  const { deleteSavedSketch, getSavedSketch, saveSketch } =
-    useContext(SketchSaveContext);
+  const { deleteSketch, saveSketch, storageValue } = useSketchStorage(id);
   const { open } = useContext(ModalContext);
+  const { showMessage } = useContext(SnackContext);
   const theme = useTheme();
   const [error, setError] = useState(null);
-  const [snackMessage, setSnackMessage] = useState('');
-  const [showSnack, setShowSnack] = useState(false);
-
-  const { id, defaultCode } = useMemo(() => sketches[index] ?? {}, [index]);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [settingsAnchor, setSettingsAnchor] = useState(null);
 
   const cleanUp = useCallback(() => {
     removeSVGScript(document.head);
 
-    if (svgContainer.current) {
-      svgContainer.current.innerHTML = '';
+    if (sketchElement.current) {
+      sketchElement.current.innerHTML = '';
     }
   }, []);
 
   const updateSVG = useCallback(() => {
     cleanUp();
 
-    if (!codeValue.current || !svgContainer.current) return;
+    if (!codeValue.current || !sketchElement.current) return;
 
     try {
+      // create the SVG
       const functionName = createSVGScript(codeValue.current, document.head);
 
       // clear any error
@@ -86,13 +137,13 @@ export const Component = () => {
 
       // run the script
       const svg = window[functionName]();
-      svgContainer.current.innerHTML = '';
-      svgContainer.current.appendChild(svg);
+      sketchElement.current.innerHTML = '';
+      sketchElement.current.appendChild(svg);
 
-      svgContainer.current.style = `box-shadow: 0 0 16px ${theme.palette.primary.main};`;
+      sketchElement.current.style = `box-shadow: 0 0 16px ${theme.palette.primary.main};`;
 
       setTimeout(
-        () => (svgContainer.current.style = `box-shadow 0.3s ease-in-out;`),
+        () => (sketchElement.current.style = `box-shadow 0.3s ease-in-out;`),
         200
       );
     } catch (error) {
@@ -100,136 +151,199 @@ export const Component = () => {
     }
   }, [theme, cleanUp]);
 
-  const saveSVG = useCallback(() => {
+  const saveCurrentSketch = useCallback(() => {
     // save the sketch
-    const savedValue = saveSketch(id, codeValue.current);
-    setSavedSketch(savedValue);
-    setSavedTime(dayjs(savedValue.timestamp).format('MM/DD/YYYY hh:mm:ss'));
+    saveSketch(id, codeValue.current);
+    showMessage('Sketch saved!');
 
-    setSnackMessage('Sketch saved!');
-    setShowSnack(true);
+    pendingChanges.current = false;
 
     updateSVG();
   }, [saveSketch, updateSVG, id]);
 
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.keyCode === 83 && (event.metaKey || event.ctrlKey)) {
-        event.preventDefault();
-        saveSVG();
-      }
-    };
+  const updateEditor = useCallback(() => {
+    if (codeEditor.current && codeEditor.current.view) {
+      const { dispatch, state } = codeEditor.current.view;
+      dispatch({
+        changes: {
+          from: 0,
+          to: state.doc.length,
+          insert: codeValue.current,
+        },
+      });
+    }
+  }, []);
 
+  useEffect(() => {
     // Listen for control/command + s key combo while preventing
     // multiple listeners being added.
-    if (codeEditor.current && !hasListeners.current) {
-      hasListeners.current = true;
+    if (!hasListeners.current && codeEditor.current) {
+      const handleKeyDown = (event) => {
+        if (event.keyCode === 83 && (event.metaKey || event.ctrlKey)) {
+          event.preventDefault();
+          saveCurrentSketch();
+        }
+      };
+
       codeEditor.current.editor.addEventListener(
         'keydown',
         handleKeyDown,
         false
       );
+
+      window.onbeforeunload = () => {
+        if (pendingChanges.current) {
+          return 'Wait! You have unsaved changes that will be lost!';
+        }
+      };
+
+      hasListeners.current = true;
+
+      return cleanUp;
     }
+  }, [saveCurrentSketch, cleanUp]);
 
-    // try to load the sketch
-    const savedValue = getSavedSketch(id);
+  useEffect(() => {
+    // avoid performing the initial load multiple times
+    if (!hasLoaded && !editorInterval.current) {
+      // The editor takes a few cycles before the view and
+      // state values are available.
+      editorInterval.current = setInterval(() => {
+        if (codeEditor.current && codeEditor.current.view) {
+          // clear the interval
+          clearInterval(editorInterval.current);
 
-    if (savedValue) {
-      setSavedSketch(savedValue);
-      setSavedTime(dayjs(savedValue.timestamp).format('MM/DD/YYYY hh:mm:ss'));
+          if (storageValue) {
+            // update the code value
+            codeValue.current = storageValue.value;
+          } else {
+            codeValue.current = defaultCode;
+          }
 
-      // update the code value
-      codeValue.current = savedValue.value;
-    } else {
-      codeValue.current = defaultCode;
+          // indicate this operation has happened
+          setHasLoaded(true);
+
+          updateEditor();
+          updateSVG();
+        }
+      }, 100);
     }
-
-    setInitialCode(codeValue.current);
-    // perform the initial update
-    updateSVG();
-
-    return () => {
-      // remove event listener
-      if (codeEditor.current && hasListeners.current) {
-        hasListeners.current = false;
-        codeEditor.current.editor.removeEventListener(
-          'keydown',
-          handleKeyDown,
-          false
-        );
-      }
-      cleanUp();
-    };
-  }, [
-    getSavedSketch,
-    saveSketch,
-    updateSVG,
-    saveSVG,
-    cleanUp,
-    id,
-    defaultCode,
-  ]);
-
-  const handleSnackClose = () => {
-    setSnackMessage('');
-    setShowSnack(false);
-  };
+  }, [updateSVG, storageValue, hasLoaded, id, defaultCode]);
 
   const handleCopyClick = () => {
-    if (svgContainer.current) {
+    if (sketchElement.current) {
       try {
         copy(
-          formatXml(svgContainer.current.innerHTML, { lineSeparator: '\n' })
+          formatXml(sketchElement.current.innerHTML, { lineSeparator: '\n' })
         );
       } catch (error) {
         console.error(`Could not format SVG: ${error}`);
-        copy(svgContainer.current.innerHTML);
+        copy(sketchElement.current.innerHTML);
       }
 
-      setSnackMessage('Sketch output copied to clipboard!');
-      setShowSnack(true);
+      showMessage('SVG copied to clipboard!');
     }
   };
 
   const handleCodeChange = (value) => {
     // set the ref value instead of state
     codeValue.current = value;
+
+    if (storageValue) {
+      pendingChanges.current = storageValue.value !== value;
+    } else {
+      pendingChanges.current = defaultCode !== value;
+    }
   };
 
   const handleDownloadClick = () => {
-    if (svgContainer.current) {
-      const blob = new Blob([svgContainer.current.innerHTML], {
+    if (sketchElement.current) {
+      const blob = new Blob([sketchElement.current.innerHTML], {
         type: 'data:image/svg+xml;charset=utf-8',
       });
       const url = URL.createObjectURL(blob);
 
       FileSaver.saveAs(url, `sketch${index}_${Date.now()}.svg`);
+      showMessage('SVG downloaded!');
+    }
+  };
 
-      setSnackMessage('Sketch output downloaded!');
-      setShowSnack(true);
+  const handleFormatClick = async () => {
+    // close the settings dropdown
+    setSettingsAnchor(null);
+
+    try {
+      const { format } = (await import('prettier/esm/standalone')).default;
+      const parserBabel = (await import('prettier/esm/parser-babel')).default;
+
+      const result = format(codeValue.current, {
+        parser: 'babel',
+        plugins: [parserBabel],
+        trailingComma: 'es5',
+        tabWidth: 2,
+        semi: true,
+        singleQuote: true,
+      });
+
+      codeValue.current = result;
+
+      updateEditor();
+    } catch (error) {
+      console.error(`Could not format sketch: ${error}`);
+    }
+  };
+
+  const handleResetClick = async () => {
+    // close the settings dropdown
+    setSettingsAnchor(null);
+
+    const confirmed = await open(ConfirmModal, {
+      description:
+        'Your changes to this sketch will be deleted and replaced by the default value.  Are you sure?',
+    });
+
+    if (confirmed) {
+      codeValue.current = defaultCode;
+      pendingChanges.current = false;
+
+      showMessage('Sketch reset!');
+
+      updateEditor();
+      updateSVG();
     }
   };
 
   const handleDeleteClick = async () => {
+    // close the settings dropdown
+    setSettingsAnchor(null);
+
     const confirmed = await open(ConfirmModal, {
       description:
-        'Your local changes to this sketch will be deleted and replaced by the default value.  Are you sure?',
+        'Your saved changes to this sketch will be deleted and replaced by the default value.  Are you sure?',
     });
 
     if (confirmed) {
-      deleteSavedSketch(id);
+      deleteSketch(id);
 
-      setSavedSketch(null);
-      setSavedTime(null);
-      setInitialCode(defaultCode);
       codeValue.current = defaultCode;
+      pendingChanges.current = false;
 
-      setSnackMessage('Saved changes deleted');
-      setShowSnack(true);
+      showMessage('Saved changes deleted!');
 
+      updateEditor();
       updateSVG();
     }
   };
+
+  const handleSettingsClick = (event) => {
+    setSettingsAnchor(event.currentTarget);
+  };
+
+  const handleSettingsClose = () => {
+    setSettingsAnchor(null);
+  };
+
+  const settingsIsOpen = Boolean(settingsAnchor);
 
   return (
     <>
@@ -249,40 +363,23 @@ export const Component = () => {
       </Typography>
       {!id && <Box>Sketch not found</Box>}
       {id && (
-        <Grid container spacing={2}>
+        <Grid
+          container
+          spacing={2}
+          sx={{ visibility: hasLoaded ? 'visible' : 'hidden' }}
+        >
           <Grid item xs={12} md={6}>
-            <Box
-              ref={svgContainer}
-              maxWidth={1200}
-              borderRadius={4}
-              mb={2}
-              sx={{
-                transition: 'box-shadow 0.2s ease-in-out',
-                '& svg': {
-                  width: '100%',
-                  height: '100%',
-                  border: '1px solid #222',
-                },
-              }}
-            />
-            <Box display="flex" gap={2}>
-              <FancyIconButton
-                variant="outlined"
-                color="secondary"
-                onClick={handleCopyClick}
-              >
-                <ContentCopyIcon />
-                <span>Copy SVG</span>
-              </FancyIconButton>
-              <FancyIconButton
-                variant="outlined"
-                color="secondary"
-                onClick={handleDownloadClick}
-              >
-                <DownloadIcon />
-                <span>Download SVG</span>
-              </FancyIconButton>
-            </Box>
+            <SketchContainer>
+              <SketchBox ref={sketchElement} />
+              <SketchControls data-id="sketch-controls">
+                <IconButton onClick={handleCopyClick} color="secondary">
+                  <ContentCopyIcon />
+                </IconButton>
+                <IconButton onClick={handleDownloadClick} color="secondary">
+                  <DownloadIcon />
+                </IconButton>
+              </SketchControls>
+            </SketchContainer>
           </Grid>
           <Grid item xs={12} md={6}>
             <Box
@@ -297,7 +394,7 @@ export const Component = () => {
                 gap={1}
                 color="primary.main"
               >
-                {savedSketch && (
+                {storageValue && (
                   <>
                     <CircleIcon />
                     <span>USING LOCAL COPY</span>
@@ -305,55 +402,70 @@ export const Component = () => {
                 )}
               </Box>
               <Box display="flex" justifyContent="flex-end" gap={2}>
-                <FancyIconButton variant="outlined" onClick={saveSVG}>
+                <GappedButton variant="outlined" onClick={saveCurrentSketch}>
                   <SaveIcon />
                   <span>Save</span>
-                </FancyIconButton>
-                <FancyIconButton variant="contained" onClick={updateSVG}>
+                </GappedButton>
+                <GappedButton variant="contained" onClick={updateSVG}>
                   <RefreshIcon />
                   <span>Apply</span>
-                </FancyIconButton>
+                </GappedButton>
               </Box>
             </Box>
-            <Box sx={{ mb: 2 }}>
+            <Box sx={{ mb: 2, position: 'relative' }}>
               <CodeMirror
-                value={initialCode}
+                value=""
                 onChange={handleCodeChange}
-                extensions={[javascript()]}
+                extensions={extensions}
                 theme={tokyoNightStorm}
                 ref={codeEditor}
               />
+              <SettingsButton
+                onClick={handleSettingsClick}
+                variant="outlined"
+                color="secondary"
+              >
+                <SettingsIcon />
+                <ArrowDropDownIcon />
+              </SettingsButton>
+              <Menu
+                id="settings-menu"
+                anchorEl={settingsAnchor}
+                open={settingsIsOpen}
+                onClose={handleSettingsClose}
+              >
+                <MenuItem onClick={handleFormatClick} sx={{ gap: 1 }}>
+                  <AutoFixHighIcon />
+                  <span>Format</span>
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleResetClick} sx={{ gap: 1 }}>
+                  <RestartAltIcon />
+                  <span>Reset Sketch</span>
+                </MenuItem>
+                <MenuItem
+                  onClick={handleDeleteClick}
+                  sx={{ gap: 1 }}
+                  disabled={!storageValue}
+                >
+                  <DeleteIcon />
+                  <span>Delete Local Copy</span>
+                </MenuItem>
+              </Menu>
             </Box>
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 Script generated the following error: <b>{error}</b>
               </Alert>
             )}
-            {savedSketch && (
+            {storageValue && (
               <Alert severity="info" sx={{ mb: 2 }}>
-                Last saved at {savedTime}
+                Last saved at {storageValue.displayTime}
               </Alert>
             )}
-            <Box display="flex" justifyContent="flex-end">
-              <FancyIconButton
-                variant="outlined"
-                color="error"
-                onClick={handleDeleteClick}
-                disabled={!savedSketch}
-              >
-                <DeleteIcon />
-                <span>Delete Local Copy</span>
-              </FancyIconButton>
-            </Box>
           </Grid>
         </Grid>
       )}
-      <Snackbar
-        open={showSnack}
-        autoHideDuration={3000}
-        onClose={handleSnackClose}
-        message={snackMessage}
-      />
     </>
   );
 };

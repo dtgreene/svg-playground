@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider, createHashRouter } from 'react-router-dom';
 
-import { Root, NotFound } from './pages';
+import { Root, NotFound, Sketch } from './pages';
 import { Layout, ErrorBoundary } from './components';
 
 import '@fontsource/poppins/300.css';
@@ -22,7 +22,7 @@ const router = createHashRouter(
         },
         {
           path: '/sketches/:index',
-          lazy: () => import('./pages/Sketch'),
+          element: <Sketch />,
         },
         {
           path: '*',
